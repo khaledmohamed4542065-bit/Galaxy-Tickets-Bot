@@ -15,7 +15,7 @@ export default async (message) => {
     const cmd = args[0].toLowerCase();
 
     // Check command name (with or without prefix !)
-    if (cmd === 'add-ticket-perm' || cmd === '!add-ticket-perm') {
+    if (cmd === 'add-ticket-perm' || cmd === '!add-ticket-perm' || cmd === 'add-t-perm' || cmd === '!add-t-perm') {
         try {
             // Check if member is Administrator
             if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
@@ -24,7 +24,7 @@ export default async (message) => {
 
             const roleArgs = args.slice(1);
             if (roleArgs.length === 0) {
-                return message.reply('❌ الرجاء تحديد رول واحدة على الأقل أو معرف رول (ID).\nمثال: `!add-ticket-perm @Role` أو `!add-ticket-perm 123456789012345678`');
+                return message.reply('❌ الرجاء تحديد رول واحدة على الأقل أو معرف رول (ID).\nمثال: `!add-t-perm @Role` أو `!add-t-perm 123456789012345678`');
             }
 
             const addedRoles = [];
