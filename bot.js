@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import mongoose from 'mongoose';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ override: true });
 import config from './config/config.js';
 import interactionCreate from './events/interactionCreate.js';
 import messageCreate from './events/messageCreate.js';

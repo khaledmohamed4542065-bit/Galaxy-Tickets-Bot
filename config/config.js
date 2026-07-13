@@ -1,5 +1,5 @@
 import dotenv from 'dotenv'; 
-dotenv.config();
+dotenv.config({ override: true });
 
 const config = {
     token: process.env.BOT_TOKEN,
