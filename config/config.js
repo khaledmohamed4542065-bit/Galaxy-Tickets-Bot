@@ -12,7 +12,7 @@ const config = {
     closedCategoryId: process.env.CLOSED_CATEGORY_ID || '1494164522259452085',
     logsChannelId: process.env.LOGS_CHANNEL_ID || '1495997835387076729',
     claimChannelId: process.env.CLAIM_CHANNEL_ID || '1496046810010091602',
-    allowedTicketRoles: (process.env.ALLOWED_TICKET_ROLES || '1494164520015499399,1494164520015499398,1494164520015499396,1494164519801590037,1494164519910510602')
+    allowedTicketRoles: (process.env.ALLOWED_TICKET_ROLES || '1524375812663672973')
         .split(',').map(id => id.trim()).filter(id => id.length > 0)
 };
 

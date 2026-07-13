@@ -1,6 +1,16 @@
-import { EmbedBuilder, MessageFlags } from 'discord.js';
+import { EmbedBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import config from '../config/config.js';
-import { handleCreateTicket, confirmTicketCreation, handleCloseTicket, executeCloseTicket, handleClaimTicket, handleReopenTicket, handleDeleteTicket } from '../ticket/ticketManager.js';
+import { 
+    handleCreateTicket, 
+    confirmTicketCreation, 
+    handleCloseTicket, 
+    executeCloseTicket, 
+    handleClaimTicket, 
+    handleReopenTicket, 
+    handleDeleteTicket,
+    getAllowedRoles 
+} from '../ticket/ticketManager.js';
+import { getTicketByChannelId } from '../ticket/database.js';
 
 export default async (interaction) => {
     // --- WHITELIST GUARD ---
@@ -17,6 +27,39 @@ export default async (interaction) => {
             if (isTicketMenu) {
                 await handleCreateTicket(interaction);
                 return;
+            }
+
+            // Staff check helper
+            const checkIsStaff = async () => {
+                const allowedRoles = await getAllowedRoles(interaction.guild.id);
+                return interaction.member.permissions.has(PermissionFlagsBits.Administrator) || 
+                       interaction.member.roles.cache.some(role => allowedRoles.includes(role.id));
+            };
+
+            // Enforce staff restrictions for claim, reopen, delete
+            const staffButtons = ['ticket_claim', 'ticket_open', 'ticket_delete'];
+            if (staffButtons.includes(interaction.customId)) {
+                const isStaff = await checkIsStaff();
+                if (!isStaff) {
+                    return interaction.reply({ 
+                        content: '❌ هذا الزر مخصص لأعضاء الدعم الفني فقط.', 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
+            }
+
+            // Enforce owner OR staff restrictions for closing tickets
+            if (interaction.customId === 'ticket_close' || interaction.customId === 'ticket_close_confirm_yes') {
+                const ticket = await getTicketByChannelId(interaction.channelId);
+                const isStaff = await checkIsStaff();
+                const isOwner = ticket && ticket.userId === interaction.user.id;
+                
+                if (!isStaff && !isOwner) {
+                    return interaction.reply({ 
+                        content: '❌ هذا الإجراء مخصص لصاحب التيكيت أو أعضاء الدعم الفني فقط.', 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
             }
 
             switch(interaction.customId) {

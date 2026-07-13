@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import 'dotenv/config';
 import config from './config/config.js';
 import interactionCreate from './events/interactionCreate.js';
+import messageCreate from './events/messageCreate.js';
 import { ensureFonts } from './utils/fontLoader.js';
 import { initTicketSystem } from './ticket/initTicketSystem.js';
 
@@ -44,6 +45,7 @@ const client = new Client({
 
 // Event Handlers
 client.on('interactionCreate', interactionCreate);
+client.on('messageCreate', messageCreate);
 
 client.on('guildCreate', async (guild) => {
     console.log(`📥 Added to a new server: "${guild.name}" (ID: ${guild.id})`);

@@ -16,7 +16,7 @@ import GuildSettings from '../models/GuildSettings.js';
 export { initTicketSystem };
 
 // Helper to get allowed roles from DB
-const getAllowedRoles = async (guildId) => {
+export const getAllowedRoles = async (guildId) => {
     const settings = await GuildSettings.findOne({ guildId });
     return settings?.allowedTicketRoles && settings.allowedTicketRoles.length > 0 
         ? settings.allowedTicketRoles 
@@ -149,7 +149,7 @@ export const confirmTicketCreation = async (interaction) => {
         const allowedRoles = await getAllowedRoles(guildId);
         const pingRoles = allowedRoles.map(roleId => `<@&${roleId}>`).join(' ');
         const promptMsg = await claimChannel.send({
-            content: `📢 تيكيت جديد بانتظار الاستلام! ${pingRoles}`,
+            content: `📢 تيكيت جديد بانتظار الاستلام! ${pingRoles} @here`,
             embeds: [claimPromptEmbed(ticket)],
             components: [claimPromptRow()]
         });
