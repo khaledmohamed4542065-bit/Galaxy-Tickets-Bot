@@ -1,6 +1,7 @@
-import { PermissionFlagsBits } from 'discord.js';
+import { PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import config from '../config/config.js';
 import GuildSettings from '../models/GuildSettings.js';
+import { getAllowedRoles } from '../ticket/ticketManager.js';
 
 export default async (message) => {
     // Basic checks
@@ -82,6 +83,59 @@ export default async (message) => {
         } catch (error) {
             console.error('Error in add-ticket-perm command:', error);
             return message.reply('❌ حدث خطأ أثناء محاولة حفظ الإعدادات في قاعدة البيانات.');
+        }
+    }
+
+    if (cmd === 'rm-ticket-perm' || cmd === '!rm-ticket-perm' || cmd === 'rm-t-perm' || cmd === '!rm-t-perm') {
+        try {
+            // Check if member is Administrator
+            if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                return message.reply('❌ ليس لديك صلاحية استخدام هذا الأمر (مطلوب صلاحية المسؤول).');
+            }
+
+            const allowedRoles = await getAllowedRoles(message.guild.id);
+            if (!allowedRoles || allowedRoles.length === 0) {
+                return message.reply('❌ لا توجد أي رتب مسموح لها حالياً في قاعدة البيانات لإزالتها.');
+            }
+
+            const options = [];
+            for (const roleId of allowedRoles) {
+                const role = message.guild.roles.cache.get(roleId) || await message.guild.roles.fetch(roleId).catch(() => null);
+                const label = role ? role.name : `Unknown Role (${roleId})`;
+                options.push(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel(label)
+                        .setValue(roleId)
+                );
+            }
+
+            // Slice at 25 as that's the Discord select menu limit
+            const slicedOptions = options.slice(0, 25);
+
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('ticket_rm_perm_select')
+                .setPlaceholder('اختر الرولات لحذفها')
+                .setMinValues(1)
+                .setMaxValues(slicedOptions.length)
+                .addOptions(slicedOptions);
+
+            const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+            const deleteBtn = new ButtonBuilder()
+                .setCustomId('ticket_rm_perm_btn')
+                .setLabel('حذف الرولات المحددة 🗑️')
+                .setStyle(ButtonStyle.Danger)
+                .setDisabled(true); // Disabled initially
+
+            const btnRow = new ActionRowBuilder().addComponents(deleteBtn);
+
+            await message.reply({
+                content: '📋 الرجاء اختيار الرتب التي تريد إزالتها من الصلاحيات، ثم اضغط على زر الحذف:',
+                components: [selectRow, btnRow]
+            });
+        } catch (error) {
+            console.error('Error in rm-ticket-perm command:', error);
+            return message.reply('❌ حدث خطأ أثناء معالجة الطلب.');
         }
     }
 };

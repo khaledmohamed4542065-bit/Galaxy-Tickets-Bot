@@ -5,7 +5,9 @@ import {
     Colors, 
     ActionRowBuilder, 
     ButtonBuilder, 
-    ButtonStyle 
+    ButtonStyle,
+    StringSelectMenuBuilder,
+    StringSelectMenuOptionBuilder
 } from 'discord.js';
 import { initTicketSystem } from './initTicketSystem.js';
 import config from '../config/config.js';
@@ -551,5 +553,107 @@ const sendStructuredLog = async (guild, event, data = {}) => {
         await logChannel.send({ embeds: [embed] });
     } catch (err) {
         console.error('Structured log failed:', err);
+    }
+};
+
+export const handleRmPermSelect = async (interaction) => {
+    const selectedValues = interaction.values;
+    const allowedRoles = await getAllowedRoles(interaction.guild.id);
+    if (!allowedRoles || allowedRoles.length === 0) {
+        return interaction.update({ content: '❌ لم يتم العثور على رتب في قاعدة البيانات.', components: [], embeds: [] });
+    }
+
+    const options = [];
+    for (const roleId of allowedRoles) {
+        const role = interaction.guild.roles.cache.get(roleId) || await interaction.guild.roles.fetch(roleId).catch(() => null);
+        const label = role ? role.name : `Unknown Role (${roleId})`;
+        const option = new StringSelectMenuOptionBuilder()
+            .setLabel(label)
+            .setValue(roleId);
+        
+        if (selectedValues.includes(roleId)) {
+            option.setDefault(true);
+        }
+        options.push(option);
+    }
+
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('ticket_rm_perm_select')
+        .setPlaceholder('اختر الرولات لحذفها')
+        .setMinValues(1)
+        .setMaxValues(options.length)
+        .addOptions(options);
+
+    const selectRow = new ActionRowBuilder().addComponents(selectMenu);
+
+    const deleteBtn = new ButtonBuilder()
+        .setCustomId('ticket_rm_perm_btn')
+        .setLabel('حذف الرولات المحددة 🗑️')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(false);
+
+    const btnRow = new ActionRowBuilder().addComponents(deleteBtn);
+
+    await interaction.update({
+        components: [selectRow, btnRow]
+    });
+};
+
+export const handleRmPermConfirm = async (interaction) => {
+    const key = `rm_perm_${interaction.guild.id}`;
+    if (activeOperations.has(key)) return;
+    activeOperations.add(key);
+
+    try {
+        await interaction.update({
+            components: [
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('ticket_rm_perm_btn').setLabel('جاري الحذف...').setStyle(ButtonStyle.Danger).setDisabled(true)
+                )
+            ]
+        });
+    } catch (e) {
+        console.error('Failed to disable rm perm button:', e);
+    }
+
+    try {
+        const selectMenuRow = interaction.message.components[0];
+        if (!selectMenuRow || !selectMenuRow.components[0]) {
+            return interaction.editReply({ content: '❌ حدث خطأ أثناء قراءة الرتب المحددة.', components: [], embeds: [] });
+        }
+
+        const selectMenu = selectMenuRow.components[0];
+        const selectedRoleIds = selectMenu.options
+            .filter(opt => opt.default === true)
+            .map(opt => opt.value);
+
+        if (!selectedRoleIds || selectedRoleIds.length === 0) {
+            return interaction.editReply({ content: '❌ لم تقم باختيار أي رتبة لحذفها.', components: [], embeds: [] });
+        }
+
+        const settings = await GuildSettings.findOne({ guildId: interaction.guild.id });
+        if (!settings) {
+            return interaction.editReply({ content: '❌ لم يتم العثور على إعدادات هذا الخادم في قاعدة البيانات.', components: [], embeds: [] });
+        }
+
+        const currentRoles = settings.allowedTicketRoles || [];
+        const updatedRoles = currentRoles.filter(roleId => !selectedRoleIds.includes(roleId));
+
+        settings.allowedTicketRoles = updatedRoles;
+        await settings.save();
+
+        const deletedPing = selectedRoleIds.map(roleId => `<@&${roleId}>`).join(' ');
+        const successEmbed = new EmbedBuilder()
+            .setDescription(`✅ تم حذف الرتب التالية من الصلاحيات بنجاح: ${deletedPing}`)
+            .setColor('#8B2FF3');
+
+        await interaction.editReply({ embeds: [successEmbed], components: [] });
+    } catch (err) {
+        console.error('Error in handleRmPermConfirm:', err);
+        try {
+            await interaction.editReply({ content: '❌ حدث خطأ فني أثناء محاولة الحذف.', components: [], embeds: [] });
+        } catch {}
+    } finally {
+        activeOperations.delete(key);
     }
 };

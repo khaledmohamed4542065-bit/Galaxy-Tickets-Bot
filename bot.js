@@ -10,12 +10,7 @@ import { initTicketSystem } from './ticket/initTicketSystem.js';
 
 console.log('🚀 Initializing Galaxy Ticket Bot...');
 
-// Pre-load fonts asynchronously on boot
-ensureFonts().then(() => {
-    console.log('✨ Custom fonts initialized successfully.');
-}).catch(err => {
-    console.error('❌ Failed to initialize fonts:', err);
-});
+// Fonts will be loaded before client login at the end of the file
 
 // Database Connection
 const mongoUrl = process.env.MONGO_URL || process.env.MONGO_URI;
@@ -97,4 +92,11 @@ if (!config.token || config.token.trim() === '') {
     process.exit(1);
 }
 
-client.login(config.token);
+console.log('📥 Pre-loading fonts before login...');
+ensureFonts().then(() => {
+    console.log('✨ Custom fonts initialized successfully. Logging in...');
+    client.login(config.token);
+}).catch(err => {
+    console.error('❌ Failed to initialize fonts. Logging in anyway...', err);
+    client.login(config.token);
+});

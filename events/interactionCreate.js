@@ -8,7 +8,9 @@ import {
     handleClaimTicket, 
     handleReopenTicket, 
     handleDeleteTicket,
-    getAllowedRoles 
+    getAllowedRoles,
+    handleRmPermSelect,
+    handleRmPermConfirm
 } from '../ticket/ticketManager.js';
 import { getTicketByChannelId } from '../ticket/database.js';
 
@@ -19,13 +21,24 @@ export default async (interaction) => {
     if (!interaction.guild) return;
 
     const isTicketButton = interaction.isButton() && interaction.customId.startsWith('ticket_');
-    const isTicketMenu = interaction.isStringSelectMenu() && interaction.customId === 'ticket_select';
+    const isTicketMenu = interaction.isStringSelectMenu() && interaction.customId.startsWith('ticket_');
 
     if (isTicketButton || isTicketMenu) {
         console.log(`🤖 Ticket Interaction received: ${interaction.customId} from user ${interaction.user.id} in channel ${interaction.channelId}`);
         try {
             if (isTicketMenu) {
-                await handleCreateTicket(interaction);
+                if (interaction.customId === 'ticket_select') {
+                    await handleCreateTicket(interaction);
+                } else if (interaction.customId === 'ticket_rm_perm_select') {
+                    // Enforce administrator restriction
+                    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                        return interaction.reply({ 
+                            content: '❌ هذا الإجراء مخصص للمسؤولين (Administrators) فقط.', 
+                            flags: [MessageFlags.Ephemeral] 
+                        });
+                    }
+                    await handleRmPermSelect(interaction);
+                }
                 return;
             }
 
@@ -62,6 +75,16 @@ export default async (interaction) => {
                 }
             }
 
+            // Enforce Administrator restriction for rm_perm button
+            if (interaction.customId === 'ticket_rm_perm_btn') {
+                if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                    return interaction.reply({ 
+                        content: '❌ هذا الإجراء مخصص للمسؤولين (Administrators) فقط.', 
+                        flags: [MessageFlags.Ephemeral] 
+                    });
+                }
+            }
+
             switch(interaction.customId) {
                 case 'ticket_confirm_yes':
                     await confirmTicketCreation(interaction);
@@ -87,6 +110,9 @@ export default async (interaction) => {
                     break;
                 case 'ticket_delete':
                     await handleDeleteTicket(interaction);
+                    break;
+                case 'ticket_rm_perm_btn':
+                    await handleRmPermConfirm(interaction);
                     break;
                 default:
                     return;
